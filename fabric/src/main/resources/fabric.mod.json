@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "provides": [
+    "tclayer",
+    "cclayer"
+  ],
+  "version": "${mod_version}",
+  "name": "${mod_name}",
+  "description": "${mod_description}",
+  "authors": [
+    "${list_of_authors}"
+  ],
+  "contributors": [
+    "${list_of_contributors}"
+  ],
+  "contact": {
+    "${contact_entry}": ""
+  },
+  "license": "${mod_license}",
+  "icon": "assets/${mod_id}/icon.png",
+  "environment": "*",
+  "mixins": [
+    "${mod_id}-fabric.mixins.json",
+    "${mod_id}-common.mixins.json",
+    "${mod_id}-trinkets.mixins.json"
+  ],
+  "entrypoints": {
+    "main": [
+      "io.wispforest.accessories_compat.fabric.AccessoriesCompatFabric"
+    ],
+    "client": [
+      "io.wispforest.accessories_compat.fabric.AccessoriesCompatFabricClient"
+    ]
+  },
+  "accessWidener": "${mod_id}-fabric.accesswidener",
+  "depends": {
+    "fabricloader": "${fabric_loader_version_range}",
+    "fabric-api": "${fabric_api_version_range}",
+    "minecraft": "${fabric_minecraft_version_range}",
+    "owo": "${owo_fabric_version_range}",
+    "accessories": "${accessories_fabric_version_range}",
+    "trinkets": "${trinkets_suggets_version_range}"
+  }
+}

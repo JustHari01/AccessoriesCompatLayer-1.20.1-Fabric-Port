@@ -1,0 +1,80 @@
+package io.wispforest.accessories_compat;
+
+import com.google.common.reflect.Reflection;
+import io.wispforest.accessories_compat.trinkets.utils.SlotIdRedirect;
+import io.wispforest.accessories_compat.common.AccessoriesCompatConfig;
+import io.wispforest.accessories_compat.trinkets.TrinketsCompat;
+import io.wispforest.accessories_compat.utils.GeneralPlatformUtils;
+import io.wispforest.accessories_compat.utils.LoaderPlatformUtils;
+import io.wispforest.owo.network.serialization.PacketBufSerializer;
+import org.jetbrains.annotations.ApiStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Set;
+
+public class AccessoriesCompatInit {
+
+    public static final String MODID = "accessories_compat_layer";
+    public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
+
+    static {
+        PacketBufSerializer.register(
+            SlotIdRedirect.class,
+            (buf, redirect) -> {
+                buf.writeUtf(redirect.trinketsId);
+                buf.writeUtf(redirect.accessoriesId);
+                buf.writeVarInt(redirect.additionalSlot);
+            },
+            buf -> new SlotIdRedirect(buf.readUtf(), buf.readUtf(), buf.readVarInt())
+        );
+    }
+
+    public static final AccessoriesCompatConfig CONFIG = AccessoriesCompatConfig.createAndLoad();
+
+    public static final Set<String> defaultSlots = Set.of("anklet", "back", "belt", "cape", "charm", "face", "hand", "hat", "necklace", "ring", "shoes", "wrist");
+
+    public static void init() {
+        LOGGER.info("Setting up compat modules for Accessories!");
+
+        if (LoaderPlatformUtils.INSTANCE.isModLoaded("trinkets")) {
+            Reflection.initialize(TrinketsCompat.class);
+        }
+
+        GeneralPlatformUtils.INSTANCE.registerCompatPack();
+    }
+
+    //--
+
+    /**
+     * Whether the given mods debug is enabled, this defaults to {@code true} in a development environment.
+     */
+    public static final boolean DEBUG;
+
+    static {
+        boolean debug = LoaderPlatformUtils.INSTANCE.isDevelopmentEnvironment();
+        if (System.getProperty(MODID + ".debug") != null) debug = Boolean.getBoolean(MODID + ".debug");
+
+        DEBUG = debug;
+    }
+
+    @ApiStatus.Internal
+    public static void debugWarn(Logger logger, String message) {
+        if (!DEBUG) return;
+        logger.warn(message);
+    }
+
+    @ApiStatus.Internal
+    public static void debugWarn(Logger logger, String message, Object... params) {
+        if (!DEBUG) return;
+        logger.warn(message, params);
+    }
+
+    public static void ifDebugging(Runnable runnable) {
+        if (!DEBUG) return;
+
+        runnable.run();
+    }
+
+    //--
+}

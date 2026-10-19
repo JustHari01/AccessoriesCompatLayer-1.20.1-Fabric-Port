@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "package": "io.wispforest.accessories_compat.mixin",
+  "plugin": "io.wispforest.accessories_compat.mixin.AccessoriesCompatMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "minVersion": "0.8",
+  "mixins": [
+    "AccessoriesMixin",
+    "AccessoriesAPIMixin",
+    "AccessoriesEventHandlerMixin",
+    "AccessoryMixin",
+    "DataLoaderBaseMixin",
+    "EntitySlotLoaderMixin",
+    "SlotTypeLoaderMixin",
+    "TagGroupLoaderMixin"
+  ],
+  "client": [
+    "client.AccessoriesRendererRegistryMixin",
+    "client.AbstractContainerScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "refmap": "accessories_compat_layer-common-common-refmap.json"
+}

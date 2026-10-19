@@ -1,0 +1,45 @@
+{
+  "required": true,
+  "package": "io.wispforest.accessories_compat.curios.mixin",
+  "plugin": "io.wispforest.accessories_compat.curios.mixin.CuriosCompatMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "minVersion": "0.8",
+  "mixins": [
+    "accessor.CuriosImplMixinHooksAccessor",
+    "accessor.ItemizedCurioCapabilityAccessor",
+    "accessor.SlotTypeBuilderAccessor",
+    "accessor.CurioAttributeModifierEventAccessor",
+    "accessories.AccessoriesCapabilityImplMixin",
+    "accessories.AccessoriesContainerImplAccessor",
+    "accessories.SlotAttributeMixin",
+    "accessories.AccessoriesEventHandlerMixin",
+    "CurioCanUnequipEventMixin",
+    "CurioInventoryCapabilityMixin",
+    "CurioInventoryMixin",
+    "CurioItemHandlerMixin",
+    "CuriosEntityManagerMixin",
+    "CuriosImplMixinHooksMixin",
+    "CuriosMixin",
+    "CuriosServerPayloadHandlerMixin",
+    "CuriosSlotManagerMixin",
+    "IconHelperMixin",
+    "RegisterCapabilitiesEventMixin",
+    "SlotAttributeMixin",
+    "SlotContextMixin",
+    "CuriosTagsMixin"
+  ],
+  "client": [
+    "client.ClientLanguageMixin",
+    "client.CuriosClientProxyMixin",
+    "client.CuriosRendererRegistryMixin",
+    "client.CuriosClientPayloadHandlerMixin",
+    "client.CuriosButtonMixin",
+    "client.CuriosClientPayloadHandlerMixin",
+    "client.AbstractContainerScreenMixin",
+    "client.AccessoriesExperimentalScreenMixin",
+    "client.SlotComponentMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,227 @@
+package io.wispforest.accessories_compat.trinkets.wrapper;
+
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+import com.mojang.logging.LogUtils;
+import dev.emi.trinkets.api.*;
+
+import io.wispforest.accessories.api.AccessoriesAPI;
+import io.wispforest.accessories.api.AccessoriesCapability;
+import io.wispforest.accessories.api.slot.SlotEntryReference;
+import io.wispforest.accessories.data.EntitySlotLoader;
+import io.wispforest.accessories.impl.AccessoriesHolderImpl;
+import io.wispforest.accessories_compat.AccessoriesCompatInit;
+import io.wispforest.accessories_compat.trinkets.utils.OuterGroupMap;
+import net.minecraft.core.Holder;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.util.Tuple;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.item.ItemStack;
+import org.slf4j.Logger;
+
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
+
+public record WrappedTrinketComponent(LivingEntity entity) implements TrinketComponent {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
+
+    public AccessoriesCapability capability() {
+        return AccessoriesCapability.get(entity);
+    }
+
+    @Override
+    public LivingEntity getEntity() {
+        return entity;
+    }
+
+    @Override
+    public Map<String, SlotGroup> getGroups() {
+        return TrinketsApi.getEntitySlots(entity().level(), entity().getType());
+    }
+
+    @Override
+    public Map<String, Map<String, TrinketInventory>> getInventory() {
+        var entity = this.entity();
+
+        return new OuterGroupMap(TrinketsWrappingUtils.getGroupedSlots(entity.level().isClientSide(), entity.getType()),
+                this,
+                capability(),
+                (type, additionalMsg) -> {
+                    if (!AccessoriesCompatInit.CONFIG.dumpDataWhenNullEntries()) return;
+
+                    LOGGER.warn("Unable to get some value leading to a possible error, here comes the dumping data!");
+                    LOGGER.warn("Entity: {}", this.entity());
+                    LOGGER.warn("Entity Slots: {}", EntitySlotLoader.getEntitySlots(this.entity()));
+                    LOGGER.warn("Current Containers: {}", capability().getContainers());
+                    LOGGER.warn("More Info: ({})", additionalMsg);
+                });
+    }
+
+    @Override
+    public void update() {
+        capability().updateContainers();
+    }
+
+    @Override
+    public void addTemporaryModifiers(Multimap<String, AttributeModifier> modifiers) {
+        capability().addTransientSlotModifiers(modifiers);
+    }
+
+    @Override
+    public void addPersistentModifiers(Multimap<String, AttributeModifier> modifiers) {
+        capability().addPersistentSlotModifiers(modifiers);
+    }
+
+    @Override
+    public void removeModifiers(Multimap<String, AttributeModifier> modifiers) {
+        capability().removeSlotModifiers(modifiers);
+    }
+
+    @Override
+    public void clearModifiers() {
+        capability().clearSlotModifiers();
+    }
+
+    @Override
+    public Multimap<String, AttributeModifier> getModifiers() {
+        return capability().getSlotModifiers();
+    }
+
+    @Override
+    public boolean isEquipped(Predicate<ItemStack> predicate) {
+        return capability().isEquipped(predicate);
+    }
+
+    @Override
+    public List<Tuple<SlotReference, ItemStack>> getEquipped(Predicate<ItemStack> predicate) {
+        var list = new ArrayList<Tuple<SlotReference, ItemStack>>();
+
+        for (var slotEntryReference : capability().getEquipped(predicate)) {
+            TrinketsWrappingUtils.createTrinketsReference(slotEntryReference.reference())
+                .map(slotReference -> new Tuple<>(
+                    slotReference,
+                    slotEntryReference.stack()
+                )).ifPresent(list::add);
+        }
+
+        return list;
+    }
+
+    public List<Tuple<SlotReference, ItemStack>> getAllEquipped() {
+        var list = new ArrayList<Tuple<SlotReference, ItemStack>>();
+
+        for (var slotEntryReference : capability().getAllEquipped()) {
+            TrinketsWrappingUtils.createTrinketsReference(slotEntryReference.reference())
+                .map(slotReference -> new Tuple<>(
+                    slotReference,
+                    slotEntryReference.stack()
+                )).ifPresent(list::add);
+        }
+
+        return list;
+    }
+
+    @Override
+    public void forEach(BiConsumer<SlotReference, ItemStack> consumer) {
+        for (var tuple : this.getAllEquipped()) {
+            consumer.accept(tuple.getA(), tuple.getB());
+        }
+    }
+
+    @Override
+    public Set<TrinketInventory> getTrackingUpdates() {
+        return new HashSet<>();
+    }
+
+    @Override
+    public void clearCachedModifiers() {
+        capability().clearCachedSlotModifiers();
+    }
+
+    @Override
+    public void readFromNbt(CompoundTag tag) {
+        if (tag.contains("data_written_by_accessories")) return;
+
+        var holder = this.capability().getHolder();
+
+        var dropped = ((AccessoriesHolderImpl) holder).invalidStacks;
+        for (String groupKey : tag.getAllKeys()) {
+            CompoundTag groupTag = tag.getCompound(groupKey);
+            if (groupTag != null) {
+                Map<String, TrinketInventory> groupSlots = this.getInventory().get(groupKey);
+                if (groupSlots != null) {
+                    for (String slotKey : groupTag.getAllKeys()) {
+                        CompoundTag slotTag = groupTag.getCompound(slotKey);
+                        ListTag list = slotTag.getList("Items", Tag.TAG_COMPOUND);
+                        TrinketInventory inv = groupSlots.get(slotKey);
+
+                        if (inv != null) {
+                            inv.fromTag(slotTag.getCompound("Metadata"));
+                        }
+
+                        for (int i = 0; i < list.size(); i++) {
+                            CompoundTag c = list.getCompound(i);
+                            ItemStack stack = ItemStack.of(c);
+                            if (inv != null && i < inv.getContainerSize()) {
+                                inv.setItem(i, stack);
+                            } else {
+                                dropped.add(stack);
+                            }
+                        }
+                    }
+                } else {
+                    for (String slotKey : groupTag.getAllKeys()) {
+                        CompoundTag slotTag = groupTag.getCompound(slotKey);
+                        ListTag list = slotTag.getList("Items", Tag.TAG_COMPOUND);
+                        for (int i = 0; i < list.size(); i++) {
+                            CompoundTag c = list.getCompound(i);
+                            dropped.add(ItemStack.of(c));
+                        }
+                    }
+                }
+            }
+        }
+
+        for (var entryRef : this.capability().getAllEquipped()) {
+            var reference = entryRef.reference();
+            var slotType = reference.type();
+
+            if (AccessoriesAPI.getPredicateResults(slotType.validators(), reference.entity().level(), slotType, 0, entryRef.stack()))
+                continue;
+
+            dropped.add(entryRef.stack().copy());
+
+            entryRef.reference().setStack(ItemStack.EMPTY);
+        }
+
+        // Static modifier NBT is read by Trinket#getModifiers when the wrapper is queried.
+    }
+
+    @Override
+    public void writeToNbt(CompoundTag tag) {
+        tag.put("data_written_by_accessories", new CompoundTag());
+
+        for (Map.Entry<String, Map<String, TrinketInventory>> group : this.getInventory().entrySet()) {
+            CompoundTag groupTag = new CompoundTag();
+            for (Map.Entry<String, TrinketInventory> slot : group.getValue().entrySet()) {
+                CompoundTag slotTag = new CompoundTag();
+                ListTag list = new ListTag();
+                TrinketInventory inv = slot.getValue();
+                for (int i = 0; i < inv.getContainerSize(); i++) {
+                    CompoundTag c = inv.getItem(i).save(new CompoundTag());
+                    list.add(c);
+                }
+                slotTag.put("Metadata", inv.toTag());
+                slotTag.put("Items", list);
+                groupTag.put(slot.getKey(), slotTag);
+            }
+            tag.put(group.getKey(), groupTag);
+        }
+    }
+}
